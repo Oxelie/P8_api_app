@@ -21,7 +21,28 @@ import requests
 # MODEL_PATH = os.path.join(os.path.dirname(__file__), "../model_ResNet50_UNet.keras") 
 # MODEL_PATH = "https://drive.google.com/file/d/1oe94iBbXN2Gdt7wGNwciwDKq4rgiF8IA"
 
-requests.get("https://drive.google.com/uc?export=download&id=1oe94iBbXN2Gdt7wGNwciwDKq4rgiF8IA")
+# code à voir pour télécharger le modèle depuis google drive (si besoin) et le charger ensuite
+import requests
+
+def download_large_file(file_id, destination):
+    session = requests.Session()
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    response = session.get(url, stream=True)
+
+    # Récupère le token de confirmation si présent
+    token = None
+    for key, value in response.cookies.items():
+        if key.startswith("download_warning"):
+            token = value
+
+    if token:
+        response = session.get(url, params={"confirm": token}, stream=True)
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(32768):
+            f.write(chunk)
+            
+download_large_file("1oe94iBbXN2Gdt7wGNwciwDKq4rgiF8IA", "../model_ResNet50_UNet.keras")
 
 # actuellement dans le dossier /Users/stephanieduhem/Documents/_DIPLOMES_CURSUS_/MASTER_AI_ENGINEER/openclassroom/projet_8/P8_Segmentation_Images/mlf_1/models 
 # + sous dossiers aux noms des modèles REsNet50_Unet_50epochs_data_augm
