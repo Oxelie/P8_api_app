@@ -1,4 +1,5 @@
 app_flask/test/*
+*.png
 *pyc
 .lh*
 .DS_Store
