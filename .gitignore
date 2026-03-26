@@ -1,4 +1,4 @@
-app_flask/test/*
+test/*
 *.png
 *pyc
 .lh*
