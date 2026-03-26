@@ -13,11 +13,16 @@ import pathlib
 from .utils_p8 import labels
 import matplotlib.pyplot as plt
 import base64
+import requests
 
 
 
 # Charge le modèle entraîné
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "../model_ResNet50_UNet.keras") 
+# MODEL_PATH = os.path.join(os.path.dirname(__file__), "../model_ResNet50_UNet.keras") 
+# MODEL_PATH = "https://drive.google.com/file/d/1oe94iBbXN2Gdt7wGNwciwDKq4rgiF8IA"
+
+requests.get("https://drive.google.com/uc?export=download&id=1oe94iBbXN2Gdt7wGNwciwDKq4rgiF8IA")
+
 # actuellement dans le dossier /Users/stephanieduhem/Documents/_DIPLOMES_CURSUS_/MASTER_AI_ENGINEER/openclassroom/projet_8/P8_Segmentation_Images/mlf_1/models 
 # + sous dossiers aux noms des modèles REsNet50_Unet_50epochs_data_augm
 
