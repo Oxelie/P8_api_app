@@ -27,4 +27,5 @@ tensorflow-io-gcs-filesystem==0.37.1
 typing_extensions==4.14.0
 unicodedata2 
 uvicorn==0.35.0
+gdown 
 
