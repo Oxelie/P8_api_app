@@ -16,6 +16,7 @@ import base64
 import requests
 import time
 import gdown
+from azure.storage.blob import BlobServiceClient
 
 # MAIN_DIR = "https://drive.google.com/drive/folders/1xR3fMt_t8op1NqHP6UAOczNtEXi0FdUA"
 # TEST_DIR = "./test"
@@ -244,82 +245,57 @@ import gdown
 # Chemin absolu du répertoire du module API
 API_DIR = pathlib.Path(__file__).parent.absolute()
 
-# Dossier de cache pour les modèles et données téléchargés
+# Dossier de cache local pour les fichiers téléchargés
 CACHE_DIR = API_DIR / ".cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-# Les chemins où seront stockés les fichiers localement
 MODEL_PATH = CACHE_DIR / "model_ResNet50_UNet.keras"
 TEST_DIR = CACHE_DIR / "test"
 
-# URLs Google Drive
-MAIN_DIR = "https://drive.google.com/drive/folders/1xR3fMt_t8op1NqHP6UAOczNtEXi0FdUA"
+# Google Drive — images de test uniquement
 TEST_DRIVE_URL = "https://drive.google.com/drive/folders/16P7bh3J9Cj5Vdrt1Zk3jUWccYO7fKs_l"
+
+# Azure Blob Storage — modèle
+AZURE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "")
+AZURE_CONTAINER_NAME = "models"
+AZURE_BLOB_NAME = "model_ResNet50_UNet.keras"
 
 TARGET_SIZE = (256, 512)
 
-# def ensure_model_downloaded():
-#     """Télécharge le modèle depuis Drive s'il n'existe pas localement."""
-#     if not MODEL_PATH.exists():
-#         print(f"Modèle non trouvé. Téléchargement depuis Drive (314.7 MB)...")
-#         try:
-#             # ID direct du fichier modèle (remplace par l'ID réel)
-#             MODEL_FILE_ID = "1oe94iBbXN2Gdt7wGNwciwDKq4rgiF8IA"  # https://drive.google.com/file/d/1oe94iBbXN2Gdt7wGNwciwDKq4rgiF8IA/view?usp=drive_link
-            
-#             gdown.download(
-#                 # f"https://drive.google.com/file/d/{MODEL_FILE_ID}",
-#                 "https://drive.google.com/drive/folders/1xR3fMt_t8op1NqHP6UAOczNtEXi0FdUA",
-#                 str(MODEL_PATH),
-#                 quiet=False,
-#                 confirm=2 
-#             )
-#             print(f"✓ Modèle téléchargé: {MODEL_PATH}")
-#         except Exception as e:
-#             print(f"\n❌ ERREUR: Impossible de télécharger le modèle")
-#             print(f"   Lien: {MAIN_DIR}")
-#             raise RuntimeError(str(e))
-#     else:
-#         print(f"✓ Modèle trouvé localement: {MODEL_PATH}")
-        
-        
-# https://drive.google.com/file/d/1oe94iBbXN2Gdt7wGNwciwDKq4rgiF8IA/view?usp=drive_link
+
 def ensure_model_downloaded():
-    """Télécharge le modèle depuis Drive s'il n'existe pas localement."""
-    if not MODEL_PATH.exists():
-        print(f"Modèle non trouvé. Téléchargement depuis Drive (314.7 MB)...")
-        try:
-            # Extraire l'ID du fichier depuis l'URL
-            file_id = "1oe94iBbXN2Gdt7wGNwciwDKq4rgiF8IA"
-            gdown.download(
-                f"https://drive.google.com/uc?id={file_id}&export=download",
-                str(MODEL_PATH),
-                quiet=False
-            )
-            print(f"✓ Modèle téléchargé: {MODEL_PATH}")
-        except Exception as e:
-            print(f"\n❌ ERREUR: Impossible de télécharger le modèle")
-            print(f"   Lien: {MAIN_DIR}")
-            raise RuntimeError(str(e))
-    else:
-        print(f"✓ Modèle trouvé localement: {MODEL_PATH}")
-        
+    """Télécharge le modèle depuis Azure Blob Storage s'il n'existe pas en cache local."""
+    if MODEL_PATH.exists():
+        print(f"✓ Modèle trouvé en cache: {MODEL_PATH}")
+        return
+    if not AZURE_CONNECTION_STRING:
+        raise RuntimeError(
+            "Variable d'environnement AZURE_STORAGE_CONNECTION_STRING manquante."
+        )
+    print("Modèle non trouvé. Téléchargement depuis Azure Blob Storage...")
+    try:
+        blob_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING) \
+            .get_blob_client(container=AZURE_CONTAINER_NAME, blob=AZURE_BLOB_NAME)
+        with open(MODEL_PATH, "wb") as f:
+            f.write(blob_client.download_blob().readall())
+        print(f"✓ Modèle téléchargé: {MODEL_PATH}")
+    except Exception as e:
+        raise RuntimeError(f"Impossible de télécharger le modèle depuis Azure: {e}") from e
+
 
 def ensure_test_images_downloaded():
-    """Télécharge les images de test depuis Drive s'il n'existe pas localement."""
-    if not TEST_DIR.exists() or len(list(TEST_DIR.glob("*.png"))) == 0:
-        print(f"Images de test non trouvées. Téléchargement...")
-        TEST_DIR.mkdir(parents=True, exist_ok=True)
-        try:
-            gdown.download_folder(
-                TEST_DRIVE_URL,
-                output=str(TEST_DIR),
-                quiet=False
-            )
-            print(f"✓ Images de test téléchargées: {TEST_DIR}")
-        except Exception as e:
-            print(f"⚠ Impossible de télécharger les images: {e}")
-    else:
+    """Télécharge les images de test depuis Google Drive si absentes du cache local."""
+    if TEST_DIR.exists() and len(list(TEST_DIR.glob("*.png"))) > 0:
         print(f"✓ Images de test trouvées localement: {TEST_DIR}")
+        return
+    print("Images de test non trouvées. Téléchargement depuis Google Drive...")
+    TEST_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        gdown.download_folder(TEST_DRIVE_URL, output=str(TEST_DIR), quiet=False)
+        print(f"✓ Images de test téléchargées: {TEST_DIR}")
+    except Exception as e:
+        print(f"⚠ Impossible de télécharger les images: {e}")
+
 
 # Appeler au démarrage
 ensure_model_downloaded()
