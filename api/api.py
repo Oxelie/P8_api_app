@@ -325,7 +325,7 @@ mask_paths_test = []
 
 for img_path in image_files:
     # Remplacer "_leftImg8bit" par "_labelIds"
-    mask_path = img_path.parent / str(img_path.name).replace("_leftImg8bit.png", "_labelIds.png")
+    mask_path = img_path.parent / str(img_path.name).replace("_leftImg8bit.png", "_gtFine_labelIds.png")
     
     if mask_path.exists():
         image_paths_test.append(img_path)
