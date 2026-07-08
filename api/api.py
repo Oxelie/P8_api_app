@@ -297,67 +297,64 @@ def ensure_test_images_downloaded():
         print(f"⚠ Impossible de télécharger les images: {e}")
 
 
-# Appeler au démarrage
-ensure_model_downloaded()
-ensure_test_images_downloaded()
-
-# Charger le modèle
-model_name = MODEL_PATH.stem.lower()  # Récupère le nom sans extension
-print("model_name:", model_name)
-
-model = tf.keras.models.load_model(
-    str(MODEL_PATH),
-    custom_objects={"DiceFocalLoss": DiceFocalLoss},
-    compile=False
-)
-
-# # Pour le dataset
-# image_paths_test = sorted(list(TEST_DIR.glob("*leftImg8bit.png")))
-# mask_paths_test = sorted(list(TEST_DIR.glob("*labelIds.png")))
-# test_paths = list(zip(image_paths_test, mask_paths_test))
-
-#  Récupérer toutes les images leftImg8bit
-image_files = sorted(list(TEST_DIR.glob("*leftImg8bit.png")))
-
-# Pour chaque image, chercher le mask correspondant en remplaçant le suffixe
-image_paths_test = []
-mask_paths_test = []
-
-for img_path in image_files:
-    # Remplacer "_leftImg8bit" par "_labelIds"
-    mask_path = img_path.parent / str(img_path.name).replace("_leftImg8bit.png", "_gtFine_labelIds.png")
-    
-    if mask_path.exists():
-        image_paths_test.append(img_path)
-        mask_paths_test.append(mask_path)
-
-test_paths = list(zip(image_paths_test, mask_paths_test))
-
-test_dataset = ImageSegmentationDataset(
-    paths=test_paths,
-    labels=labels,
-    batch_size=4,
-    augmentations=False,
-    normalize=True,
-    shuffle=False,
-    label_onehot=False,
-    sample_weights=True,
-    model_name="resnet50_unet"
-)
-
 app = Flask(__name__)
 
-# cet API c'est pour la liste des images de test 
+# Ressources chargées une seule fois à la première requête (lazy loading)
+_model = None
+_test_dataset = None
+
+
+def _load_resources():
+    """Télécharge et charge le modèle + dataset au premier appel."""
+    global _model, _test_dataset
+    if _model is not None and _test_dataset is not None:
+        return _model, _test_dataset
+
+    ensure_model_downloaded()
+    ensure_test_images_downloaded()
+
+    model_name = MODEL_PATH.stem.lower()
+    print("model_name:", model_name)
+
+    _model = tf.keras.models.load_model(
+        str(MODEL_PATH),
+        custom_objects={"DiceFocalLoss": DiceFocalLoss},
+        compile=False
+    )
+
+    image_files = sorted(list(TEST_DIR.glob("*leftImg8bit.png")))
+    image_paths_test = []
+    mask_paths_test = []
+    for img_path in image_files:
+        mask_path = img_path.parent / str(img_path.name).replace(
+            "_leftImg8bit.png", "_gtFine_labelIds.png"
+        )
+        if mask_path.exists():
+            image_paths_test.append(img_path)
+            mask_paths_test.append(mask_path)
+
+    test_paths = list(zip(image_paths_test, mask_paths_test))
+    _test_dataset = ImageSegmentationDataset(
+        paths=test_paths,
+        labels=labels,
+        batch_size=4,
+        augmentations=False,
+        normalize=True,
+        shuffle=False,
+        label_onehot=False,
+        sample_weights=True,
+        model_name="resnet50_unet"
+    )
+    return _model, _test_dataset
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
+
+
 @app.route("/list_img", methods=["GET"])
 def list_images():
-    # filenames = test_dataset.image_paths
-    # usable_img = []
-    # for filename in filenames:
-    #     if filename.endswith("_leftImg8bit.png") :
-    #         usable_img.append(filename)
-    # print("test_dataset.image_paths:", test_dataset.image_paths)
-    
-    # on retourne la liste des images de test disponibles (sans les chemins complets, juste les noms d'images) et leurs index 
+    _, test_dataset = _load_resources()
     return jsonify([{"index": i, "path": str(p).replace("../test/", "")} for i, p in enumerate(test_dataset.image_paths)])
 
 
@@ -372,6 +369,7 @@ def select_image():
     
      # pour charger l'image et le masque de vérité terrain sélectionnés dans le dataset (pour affichage dans l'app streamlit)
     
+    _, test_dataset = _load_resources()
     _, mask, paths = test_dataset.get_image_and_mask(request.json["image_index"])
     orig_img = np.array(Image.open(test_dataset.image_paths[request.json["image_index"]]).convert("RGB").resize((TARGET_SIZE[1], TARGET_SIZE[0]), Image.BILINEAR)
 )
@@ -425,6 +423,7 @@ def select_image():
 @app.route("/predict", methods=["POST"])
 def predict_mask():    
     
+    model, test_dataset = _load_resources()
     img_mask_pred = test_dataset.show_prediction(model, request.json["image_index"])
     
     return jsonify({"img_mask_pred": img_mask_pred})
