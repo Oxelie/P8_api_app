@@ -13,28 +13,28 @@ class DiceFocalLoss(tf.keras.losses.Loss):
     def __init__(
         self,
         num_classes: int = 8,
-        dice_smooth: float = 1e-5, # facteur de lissage pour éviter la division par zéro
+        class_weights: list = None,  # poids par classe (8 valeurs), calculés depuis data.ipynb selon la distribution de pixels
+        dice_smooth: float = 1e-5,   # facteur de lissage pour éviter la division par zéro
         focal_gamma: float = 2.0,
         focal_alpha: float = 0.25,
-        dice_weight: float = 0.5, # poids du composant dans le calcul de la combo loss
-        focal_weight: float = 0.5, # poids du composant dans le calcul de la combo loss
+        dice_weight: float = 0.5,    # poids du composant dans le calcul de la combo loss
+        focal_weight: float = 0.5,   # poids du composant dans le calcul de la combo loss
         name: str = "DiceFocalLoss",
         **kwargs: Any,
     ):
         super().__init__(name=name, **kwargs) # call du contructeur parent
         self.num_classes = num_classes
+        self.class_weights = class_weights if class_weights is not None else [1.0] * num_classes
         self.dice_smooth = dice_smooth
         self.focal_gamma = focal_gamma
         self.focal_alpha = focal_alpha
         self.dice_weight = dice_weight
         self.focal_weight = focal_weight
 
-    def call(self, y_true, y_pred, sample_weight=None):
-        # paramètres de la loss pondérée pixel par pixel, pour diminuer l'impact du déséquilibre des classes dans la loss finale ('human' plus rare que 'background' mais plus important à détecter)
+    def call(self, y_true, y_pred):
         ## y_true : shape (batch, H, W) avec des labels entiers (sparse) ici : (4, 256, 128) — un entier 0=>7 par pixel
         ## y_pred : shape (batch, H, W, num_classes) avec des logits  ici : (4, 256, 128, 8) — un vecteur de 8 valeurs par pixel  (8 scores bruts par pixel)
-        ## sample_weight : shape (batch, H, W) ou None, pour pondérer la loss pixel par pixel ici :(4, 256, 128) — un float par pixel
-        
+
         #### Dice Loss
         # Convertion one-hot des labels sparse, chaque entier en un vecteur de 8 cases ici la shape : (4, 256, 128) => (4, 256, 128, 8)
         y_true_onehot = tf.one_hot(tf.cast(y_true, tf.int32), depth=self.num_classes)
@@ -78,39 +78,32 @@ class DiceFocalLoss(tf.keras.losses.Loss):
         # Shape : (4, 256, 128, 8) => (4, 256, 128) 
         focal_per_pixel = tf.reduce_sum(focal_map, axis=-1)
 
-        # applique les poids par pixel AVANT la réduction globale (on multiplie l'erreur de chaque pixel par son poids de classe, avant de faire la moyenne)
-        if sample_weight is not None:
-            # erreur_finale_pixel = erreur_focal_pixel × poids_classe_du_pixel. 
-            
-            focal_per_pixel = focal_per_pixel * tf.cast(sample_weight, focal_per_pixel.dtype) # cast assure que les types correspondent (float32)
+        class_weights_tensor = tf.constant(
+            self.class_weights,
+            dtype=focal_per_pixel.dtype,
+        )
 
-        # moyenne la perte sur le batch
-        # les classes rares ayant un poids plus élevé, leurs pixels contribuent plus à la loss finale que les pixels des classes fréquentes
-        focal_loss = tf.reduce_mean(focal_per_pixel)
+        # Chaque identifiant de classe par son poids
+        pixel_weights = tf.gather(
+            class_weights_tensor,
+            tf.cast(y_true, tf.int32),
+        )
+
+        weighted_focal = focal_per_pixel * pixel_weights
+
+        # Moyenne pondérée
+        focal_loss = tf.reduce_sum(weighted_focal) / (
+            tf.reduce_sum(pixel_weights) + self.dice_smooth
+        )
 
         return self.dice_weight * dice_loss + self.focal_weight * focal_loss
-        
-        # # somme sur les classes → shape (batch, H, W)
-        
-        
-        # # applique les poids par pixel AVANT la réduction globale
-        
-        
-        # # Calcule la cross-entropy pixel par pixel
-        # cross_entropy = -y_true_onehot * tf.math.log(y_pred_clipped)
-        # # Applique le modulateur focal (plus de poids aux exemples difficiles)
-        # focal = self.focal_alpha * tf.pow(1 - y_pred_clipped, self.focal_gamma) * cross_entropy
-        # # moyenne la perte sur le batch
-        # focal_loss = tf.reduce_mean(tf.reduce_sum(focal, axis=-1))
 
-        # # Combo
-        # return self.dice_weight * dice_loss + self.focal_weight * focal_loss
-
-    # sauvegarde de l'état et des paramètres de la loss pour pour le reload du modèle (=sérialisation de la loss)
+    # sauvegarde de l'état et des paramètres de la loss pour le reload du modèle (=sérialisation de la loss)
     def get_config(self):
         config = super().get_config()
         config.update({
             "num_classes": self.num_classes,
+            "class_weights": self.class_weights,
             "dice_smooth": self.dice_smooth,
             "focal_gamma": self.focal_gamma,
             "focal_alpha": self.focal_alpha,
