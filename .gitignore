@@ -4,3 +4,5 @@ test/*
 .lh*
 .DS_Store
 *.keras
+postman/
+.postman/
