@@ -26,18 +26,18 @@ Le code d'entraînement des modèles est maintenu dans le dépôt `P8_Segmentati
 
 ```bash
 # Vérifier que l'API répond
-curl https://projet8-api.azurewebsites.net/health
+curl https://projet8-api-e8a2apgjhhehekc4.swedencentral-01.azurewebsites.net/health
 
 # Lister les images disponibles
-curl https://projet8-api.azurewebsites.net/list_img
+curl https://projet8-api-e8a2apgjhhehekc4.swedencentral-01.azurewebsites.net/list_img
 
 # Sélectionner l'image index 0
-curl -X POST https://projet8-api.azurewebsites.net/select_img \
+curl -X POST https://projet8-api-e8a2apgjhhehekc4.swedencentral-01.azurewebsites.net/select_img \
   -H "Content-Type: application/json" \
   -d '{"image_index": 0}'
 
 # Lancer une prédiction sur l'image index 0
-curl -X POST https://projet8-api.azurewebsites.net/predict \
+curl -X POST https://projet8-api-e8a2apgjhhehekc4.swedencentral-01.azurewebsites.net/predict \
   -H "Content-Type: application/json" \
   -d '{"image_index": 0}'
 ```
@@ -99,14 +99,14 @@ az webapp restart --name projet8-api --resource-group rg-projet8
 
 ### Gestion des crédits Azure
 
-L'App Service est **mise en pause** entre les sessions pour éviter toute consommation inutile.
+> **État actuel :** l'App Service est **arrêtée** (économies — coût Azure même sans trafic). Redémarrage en moins d'une minute avant démonstration.
 
 ```bash
-# Mettre en pause
-az webapp stop --name projet8-api --resource-group rg-projet8
-
 # Redémarrer avant démonstration
 az webapp start --name projet8-api --resource-group rg-projet8
+
+# Remettre en pause après démonstration
+az webapp stop --name projet8-api --resource-group rg-projet8
 ```
 
 ---
