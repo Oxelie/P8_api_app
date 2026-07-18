@@ -1,4 +1,4 @@
-# Projet 8 — API Flask de segmentation sémantique
+# Projet 8 — API Flask de segmentation d'images pour voiture autonome
 
 API de démonstration pour le projet de segmentation sémantique d'images urbaines (véhicule autonome).  
 Développée avec Flask + Gunicorn, containerisée via Docker, déployée sur Azure App Service.
