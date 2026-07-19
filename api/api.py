@@ -316,9 +316,19 @@ def _load_resources():
     model_name = MODEL_PATH.stem.lower()
     print("model_name:", model_name)
 
+    from keras import initializers as _keras_initializers
+
+    class _GlorotUniformCompat(_keras_initializers.GlorotUniform):
+        """Accepte input_axes/output_axes sérialisés par keras>=3.7 sans les utiliser."""
+        def __init__(self, seed=None, input_axes=None, output_axes=None, **kwargs):
+            super().__init__(seed=seed)
+
     _model = tf.keras.models.load_model(
         str(MODEL_PATH),
-        custom_objects={"DiceFocalLoss": DiceFocalLoss},
+        custom_objects={
+            "DiceFocalLoss": DiceFocalLoss,
+            "GlorotUniform": _GlorotUniformCompat,
+        },
         compile=False
     )
 
