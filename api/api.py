@@ -352,14 +352,14 @@ def health():
     return jsonify({"status": "ok"}), 200
 
 
-@app.route("/list_img", methods=["GET"])
+@app.route("/preload", methods=["GET"])
 def list_images():
     _, test_dataset = _load_resources()
     return jsonify([{"index": i, "path": str(p).replace("../test/", "")} for i, p in enumerate(test_dataset.image_paths)])
 
 
 
-# sélectionner une image de test parmi la liste des images de test disponibles (endpoint /list_img)
+# sélectionner une image de test parmi la liste des images de test disponibles (endpoint /preload)
 @app.route("/select_img", methods=["POST"])
 def select_image():
    
