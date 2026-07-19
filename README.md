@@ -66,7 +66,7 @@ P8_api_app/
 
 ## Chargement des ressources (lazy loading)
 
-Le modèle (~314 Mo) et les images de test sont **téléchargés au premier appel** (pas au démarrage), afin d'éviter un timeout de démarrage sur Azure App Service :
+Le modèle (~494 Mo) et les images de test sont **téléchargés au premier appel** (pas au démarrage), afin d'éviter un timeout de démarrage sur Azure App Service :
 
 - **Modèle** : téléchargé depuis Azure Blob Storage (`stprojet8seg`)
 - **Images de test** : téléchargées depuis Google Drive (11 images Frankfurt, Cityscapes)
