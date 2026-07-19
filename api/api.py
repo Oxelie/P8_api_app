@@ -249,7 +249,7 @@ API_DIR = pathlib.Path(__file__).parent.absolute()
 CACHE_DIR = API_DIR / ".cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-MODEL_PATH = CACHE_DIR / "model_ResNet50_UNet.keras"
+MODEL_PATH = CACHE_DIR / "model_MobileNetV3_UNet_50epochs.keras"
 TEST_DIR = CACHE_DIR / "test"
 
 # Google Drive — images de test uniquement
@@ -258,7 +258,7 @@ TEST_DRIVE_URL = "https://drive.google.com/drive/folders/16P7bh3J9Cj5Vdrt1Zk3jUW
 # Azure Blob Storage — modèle
 AZURE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "")
 AZURE_CONTAINER_NAME = "models"
-AZURE_BLOB_NAME = "model_ResNet50_UNet.keras"
+AZURE_BLOB_NAME = "model_MobileNetV3_UNet_50epochs.keras"
 
 TARGET_SIZE = (256, 512)
 
@@ -353,7 +353,7 @@ def _load_resources():
         shuffle=False,
         label_onehot=False,
         sample_weights=True,
-        model_name="resnet50_unet"
+        model_name="mobilenetv3small_unet"
     )
     return _model, _test_dataset
 
