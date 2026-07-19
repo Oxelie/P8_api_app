@@ -18,7 +18,7 @@ Le code d'entraînement des modèles est maintenu dans le dépôt `P8_Segmentati
 | Méthode | Route | Description |
 |---------|-------|-------------|
 | `GET` | `/health` | Vérification que l'API est démarrée — retourne `{"status": "ok"}` instantanément |
-| `GET` | `/list_img` | Liste les images de test disponibles (index + chemin) |
+| `GET` | `/preload` | Charge le modèle + les images de test, retourne la liste disponible (index + chemin) |
 | `POST` | `/select_img` | Retourne l'image originale et le masque réel pour un index donné |
 | `POST` | `/predict` | Génère le masque prédit par le modèle pour un index donné |
 
@@ -28,8 +28,8 @@ Le code d'entraînement des modèles est maintenu dans le dépôt `P8_Segmentati
 # Vérifier que l'API répond
 curl https://projet8-api-e8a2apgjhhehekc4.swedencentral-01.azurewebsites.net/health
 
-# Lister les images disponibles
-curl https://projet8-api-e8a2apgjhhehekc4.swedencentral-01.azurewebsites.net/list_img
+# Précharger le modèle + lister les images disponibles
+curl https://projet8-api-e8a2apgjhhehekc4.swedencentral-01.azurewebsites.net/preload
 
 # Sélectionner l'image index 0
 curl -X POST https://projet8-api-e8a2apgjhhehekc4.swedencentral-01.azurewebsites.net/select_img \
