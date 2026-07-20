@@ -316,6 +316,14 @@ def _load_resources():
     model_name = MODEL_PATH.stem.lower()
     print("model_name:", model_name)
 
+    from keras import initializers as _keras_initializers
+    _orig_glorot_init = _keras_initializers.GlorotUniform.__init__
+
+    def _patched_glorot_init(self, seed=None, input_axes=None, output_axes=None, **kwargs):
+        _orig_glorot_init(self, seed=seed)
+
+    _keras_initializers.GlorotUniform.__init__ = _patched_glorot_init
+
     _model = tf.keras.models.load_model(
         str(MODEL_PATH),
         custom_objects={"DiceFocalLoss": DiceFocalLoss},
