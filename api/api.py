@@ -259,6 +259,7 @@ TEST_DRIVE_URL = "https://drive.google.com/drive/folders/16P7bh3J9Cj5Vdrt1Zk3jUW
 AZURE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "")
 AZURE_CONTAINER_NAME = "models"
 AZURE_BLOB_NAME = "model_MobileNetV3_UNet_50epochs.keras"
+AZURE_TEST_CONTAINER_NAME = "test-images"
 
 TARGET_SIZE = (256, 512)
 
@@ -284,17 +285,27 @@ def ensure_model_downloaded():
 
 
 def ensure_test_images_downloaded():
-    """Télécharge les images de test depuis Google Drive si absentes du cache local."""
+    """Télécharge les images de test depuis Azure Blob Storage si absentes du cache local."""
     if TEST_DIR.exists() and len(list(TEST_DIR.glob("*.png"))) > 0:
         print(f"✓ Images de test trouvées localement: {TEST_DIR}")
         return
-    print("Images de test non trouvées. Téléchargement depuis Google Drive...")
+    if not AZURE_CONNECTION_STRING:
+        raise RuntimeError(
+            "Variable d'environnement AZURE_STORAGE_CONNECTION_STRING manquante."
+        )
+    print("Images de test non trouvées. Téléchargement depuis Azure Blob Storage...")
     TEST_DIR.mkdir(parents=True, exist_ok=True)
     try:
-        gdown.download_folder(TEST_DRIVE_URL, output=str(TEST_DIR), quiet=False)
+        container_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING) \
+            .get_container_client(AZURE_TEST_CONTAINER_NAME)
+        for blob in container_client.list_blobs():
+            blob_client = container_client.get_blob_client(blob.name)
+            dest_path = TEST_DIR / blob.name
+            with open(dest_path, "wb") as f:
+                f.write(blob_client.download_blob().readall())
         print(f"✓ Images de test téléchargées: {TEST_DIR}")
     except Exception as e:
-        print(f"⚠ Impossible de télécharger les images: {e}")
+        raise RuntimeError(f"Impossible de télécharger les images depuis Azure: {e}") from e
 
 
 app = Flask(__name__)
