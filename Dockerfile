@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 # Dépendances système pour opencv et albumentations
 RUN apt-get update && apt-get install -y --no-install-recommends \
